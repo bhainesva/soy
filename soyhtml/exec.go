@@ -299,6 +299,14 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 	}
 	var escapeHtml = s.autoescape != ast.AutoescapeOff
 	var result = s.val
+
+	for _, directiveName := range ObligatoryPrintDirectiveNames {
+		node.Directives = append(node.Directives, &ast.PrintDirectiveNode{
+			Pos:  node.Position(),
+			Name: directiveName,
+		})
+	}
+
 	for _, directiveNode := range node.Directives {
 		var directive, ok = PrintDirectives[directiveNode.Name]
 		if !ok {
@@ -320,33 +328,6 @@ func (s *state) evalPrint(node *ast.PrintNode) {
 					s.errorf("panic in %v: %v\nexecuted: %v(%q, %v)\n%v",
 						directiveNode, err,
 						directiveNode.Name, result, args,
-						string(debug.Stack()))
-				}
-			}()
-			result = directive.Apply(result, args)
-		}()
-		if directive.CancelAutoescape {
-			escapeHtml = false
-		}
-	}
-
-	for _, directiveName := range ObligatoryPrintDirectiveNames {
-		var directive, ok = PrintDirectives[directiveName]
-		if !ok {
-			s.errorf("Print directive %q does not exist", directiveName)
-		}
-
-		if !checkNumArgs(directive.ValidArgLengths, 0) {
-			s.errorf("Print directive %s: obligatory directive must not require arguments", directiveName)
-		}
-
-		var args = make([]data.Value, 0)
-		func() {
-			defer func() {
-				if err := recover(); err != nil {
-					s.errorf("panic obligatory directive: %v\nexecuted: %v(%q, %v)\n%v",
-						err,
-						directiveName, result, args,
 						string(debug.Stack()))
 				}
 			}()
